@@ -1,0 +1,5 @@
+cic/__pycache__/
+cic/sim_build
+.nvim/
+.venv/
+
