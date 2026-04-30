@@ -1,4 +1,5 @@
 module adc_decimation_chain #(
+    parameter CIC_SHIFT = 40,
     parameter CIC_IW = 2,
     parameter CIC_OW = 128,
     parameter CIC_R  = 100,
@@ -30,9 +31,6 @@ module adc_decimation_chain #(
     );
 
     // --- 2. Proper Scaling + Saturation (replaces magic slice) ---
-
-    // NOTE: This replaces cic_data[71:40]
-    localparam CIC_SHIFT = 40;
 
     wire signed [CIC_OW-1:0] cic_scaled_full;
     wire signed [FIR_W-1:0]  cic_scaled;

@@ -1,4 +1,6 @@
-module cic (
+module cic #(
+    parameter IW=2, OW=128, R=100, M=10)
+    (
     i_clk,
     i_reset,
     i_data,
@@ -8,7 +10,6 @@ module cic (
     );
 
     //OW = IW+ceil(M*log_2(R)) https://www.dsprelated.com/showarticle/1337.php
-    parameter IW=2, OW=128, R=100, M=10;
 
     input wire i_clk, i_reset;
     input wire signed [(IW-1):0] i_data;
