@@ -1,0 +1,12 @@
+\contentsline {section}{\numberline {1}Introduction}{3}{section.1}%
+\contentsline {section}{\numberline {2}Sigma-Delta ADC Architecture}{3}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Analog Sigma-Delta Modulator}{3}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Digital Decimation Filter Pipeline}{4}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}Stage 1: CIC Decimation Filter}{4}{subsection.2.3}%
+\contentsline {subsection}{\numberline {2.4}Stage 2: Compensation FIR Filter}{5}{subsection.2.4}%
+\contentsline {subsection}{\numberline {2.5}Stage 3: Half-Band FIR Filter}{5}{subsection.2.5}%
+\contentsline {section}{\numberline {3}Simulation and Verification of Non-Idealities}{6}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Detailed Noise Impact and Mitigation}{7}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}High-Noise Stress Test}{9}{subsection.3.2}%
+\contentsline {section}{\numberline {4}Limitations and System Constraints}{10}{section.4}%
+\contentsline {section}{\numberline {5}Conclusion}{10}{section.5}%
