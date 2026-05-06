@@ -1,14 +1,13 @@
 # Makefile
 
-SIM = verilator
-#COMPILE_ARGS = --trace
+SIM           = verilator
 TOPLEVEL_LANG = verilog
 VERILOG_SOURCES = $(shell pwd)/*.v
 
-# Change TOPLEVEL to match your new wrapper module name
 TOPLEVEL = adc_decimation_chain
+MODULE   = cic_tb
 
-# Keep MODULE as your python file name (cic_tb.py)
-MODULE = cic_tb
+# cocotb is installed in the pyenv 3.12.2 environment
+COCOTB_CONFIG = /home/sanad/.pyenv/versions/3.12.2/bin/cocotb-config
 
-include $(shell cocotb-config --makefiles)/Makefile.sim
+include $(shell $(COCOTB_CONFIG) --makefiles)/Makefile.sim

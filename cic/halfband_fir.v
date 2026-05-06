@@ -9,53 +9,67 @@ module halfband_fir #(
     output reg  signed [W-1:0] o_data
 );
 
-    // Only need outer coefficients due to symmetry and zeros
-    // h0, 0, h2, 0.5, h2, 0, h0
-    localparam signed [15:0] H0 = -16'h003A;
-    localparam signed [15:0] H2 = 16'h02A4;
+    // -----------------------------------------------------------------------
+    // 7-tap halfband FIR: h = [H0, 0, H2, 0.5, H2, 0, H0]
+    // Q15 formatting: divide by 32768 (>> 15)
+    // -----------------------------------------------------------------------
+    // Bulletproof coefficients (32-bit signed integers, avoids 16-bit sign-ext traps)
+    localparam signed [31:0] H0     = -2048;   // -0.0625 * 32768
+    localparam signed [31:0] H2     =  10240;  //  0.3125 * 32768
+    localparam signed [31:0] H_CENT =  16384;  //  0.5000 * 32768
 
-    reg signed [W-1:0] delay_line [0:6];
-    reg decimation_toggle;
-    integer i;
+    // Delay line
+    reg signed [W-1:0]   delay_line [0:6];
+    reg                  decimation_toggle;
+    integer              k;
 
-    // Structural Optimization: Pre-add symmetric taps before multiplying
-    wire signed [W:0] sum_h0 = delay_line[0] + delay_line[6];
-    wire signed [W:0] sum_h2 = delay_line[2] + delay_line[4];
+    // Use a massive 64-bit internal accumulator
+    localparam ACC_W = 64;
 
-    // ... (Keep your delay lines and sum_h0 / sum_h2 exactly the same) ...
+    /* verilator lint_off WIDTHEXPAND */
+    wire signed [ACC_W-1:0] d0 = $signed(delay_line[0]);
+    wire signed [ACC_W-1:0] d2 = $signed(delay_line[2]);
+    wire signed [ACC_W-1:0] d3 = $signed(delay_line[3]);
+    wire signed [ACC_W-1:0] d4 = $signed(delay_line[4]);
+    wire signed [ACC_W-1:0] d6 = $signed(delay_line[6]);
+    /* verilator lint_on WIDTHEXPAND */
 
-    // The center tap is a cheap arithmetic shift right (multiply by 0.5)
-    wire signed [W-1:0] center_tap = delay_line[3] >>> 1;
+    // Uniform multiply-accumulate (all operands explicitly signed and safe)
+    wire signed [ACC_W-1:0] acc = 
+        (d0 + d6) * H0 + 
+        (d2 + d4) * H2 + 
+        (d3 * H_CENT);
 
-    // 1. MAC (Multiply-Accumulate) generates a 49-bit result (33 bit sum * 16 coeff)
-    wire signed [48:0] mac_sum = (sum_h0 * H0) + (sum_h2 * H2);
+    // Q15 normalise with round-to-nearest (+ 0.5 LSB before shift)
+    wire signed [ACC_W-1:0] acc_rounded = acc + 16384;
+    wire signed [ACC_W-1:0] acc_shifted = acc_rounded >>> 15;
 
-    // 2. Shift the MAC result
-    wire signed [48:0] shifted_mac = mac_sum >>> 15;
+    // Hardcoded safe saturation bounds for W=32 (avoids 1 <<< 31 sign bugs entirely)
+    wire signed [ACC_W-1:0] max_val =  64'sd2147483647;
+    wire signed [ACC_W-1:0] min_val = -64'sd2147483648;
 
-    // 3. Truncate back to W (32 bits) BEFORE the final addition
-    wire signed [W-1:0] truncated_mac = shifted_mac[W-1:0];
+    wire signed [W-1:0] saturated = 
+        (acc_shifted > max_val) ? 32'sd2147483647 :
+        (acc_shifted < min_val) ? -32'sd2147483648 :
+        acc_shifted[W-1:0];
 
-    // 4. Final addition (W+1 bits to catch overflow)
-    wire signed [W:0] final_output_extended = truncated_mac + center_tap;
-
+    // ------------------------------------------------------------------
     always @(posedge clk) begin
         if (rst) begin
-            for (i=0; i<7; i=i+1) delay_line[i] <= 0;
+            for (k = 0; k < 7; k = k+1) delay_line[k] <= 0;
             decimation_toggle <= 1'b0;
-            o_valid <= 1'b0;
-            o_data <= 0;
+            o_valid           <= 1'b0;
+            o_data            <= 0;
         end else if (i_valid) begin
             // Shift register
             delay_line[0] <= i_data;
-            for (i=1; i<7; i=i+1) delay_line[i] <= delay_line[i-1];
+            for (k = 1; k < 7; k = k+1)
+                delay_line[k] <= delay_line[k-1];
 
-            // Toggle to drop every other sample (Decimate by 2)
+            // Decimate by 2
             decimation_toggle <= ~decimation_toggle;
-
             if (decimation_toggle) begin
-                // Explicitly slice the final W bits to satisfy Verilator
-                o_data <= final_output_extended[W-1:0];
+                o_data  <= saturated;
                 o_valid <= 1'b1;
             end else begin
                 o_valid <= 1'b0;

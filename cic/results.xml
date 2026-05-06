@@ -1,0 +1,8 @@
+<testsuites name="results">
+  <testsuite name="all" package="all">
+    <property name="random_seed" value="1778029802" />
+    <testcase name="adc_chain_tb" classname="cic_tb" file="/home/sanad/Desktop/Sigma-Delta-ADC-Filter-main/Sigma-Delta-ADC-Filter-main/v2/cic/cic_tb.py" lineno="10" time="4.376238822937012" sim_time_ns="50002500.0" ratio_time="11425907.502562206" />
+    <testcase name="noise_low_tb" classname="cic_tb" file="/home/sanad/Desktop/Sigma-Delta-ADC-Filter-main/Sigma-Delta-ADC-Filter-main/v2/cic/cic_tb.py" lineno="559" time="3.9286890029907227" sim_time_ns="50002500.0" ratio_time="12727528.181012927" />
+    <testcase name="noise_high_tb" classname="cic_tb" file="/home/sanad/Desktop/Sigma-Delta-ADC-Filter-main/Sigma-Delta-ADC-Filter-main/v2/cic/cic_tb.py" lineno="617" time="4.025008678436279" sim_time_ns="50002500.0" ratio_time="12422954.580914352" />
+  </testsuite>
+</testsuites>

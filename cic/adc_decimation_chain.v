@@ -1,24 +1,31 @@
+`timescale 1ns/1ps
+
 module adc_decimation_chain #(
-    parameter CIC_SHIFT = 40,
-    parameter CIC_IW = 2,
-    parameter CIC_OW = 128,
-    parameter CIC_R  = 100,
-    parameter CIC_M  = 10,
-    parameter FIR_W  = 32
+    // Correct bit-growth formula: OW = IW + ceil(M * log2(R))
+    //   = 2 + ceil(10 * log2(100)) = 2 + ceil(66.44) = 2 + 67 = 69
+    //   Rounded up to 72 for a clean safety margin.
+    parameter CIC_IW    = 2,
+    parameter CIC_OW    = 72,
+    parameter CIC_R     = 100,
+    parameter CIC_M     = 10,
+    // Correct SHIFT = ceil(M*log2(R)) - (FIR_W-1) = 67 - 31 = 36
+    //   Maps full CIC dynamic range into the 32-bit FIR input (31 bits of resolution).
+    parameter CIC_SHIFT = 36,
+    parameter FIR_W     = 32
 )(
-    input  wire                    clk,
-    input  wire                    rst,
+    input  wire                     clk,
+    input  wire                     rst,
     input  wire signed [CIC_IW-1:0] i_data,
-    input  wire                    i_ready,
-    
-    output wire signed [FIR_W-1:0] o_data,
-    output wire                    o_ready
+    input  wire                     i_ready,
+
+    output wire signed [FIR_W-1:0]  o_data,
+    output wire                     o_ready
 );
 
     // --- 1. CIC Filter ---
     wire signed [CIC_OW-1:0] cic_data;
     wire                     cic_ready;
-    
+
     cic #(
         .IW(CIC_IW), .OW(CIC_OW), .R(CIC_R), .M(CIC_M)
     ) cic_inst (
@@ -30,13 +37,13 @@ module adc_decimation_chain #(
         .o_ready(cic_ready)
     );
 
-    // --- 2. Proper Scaling + Saturation (replaces magic slice) ---
-
+    // --- 2. Scale + Saturate ---
     wire signed [CIC_OW-1:0] cic_scaled_full;
     wire signed [FIR_W-1:0]  cic_scaled;
-    // --- Compatibility signal for testbench ---
+
+    // Compatibility alias for testbench probing
     wire signed [FIR_W-1:0] truncated_cic_data = cic_scaled;
-    // Scale with rounding
+
     cic_scaler #(
         .IN_W(CIC_OW),
         .OUT_W(CIC_OW),
@@ -46,7 +53,6 @@ module adc_decimation_chain #(
         .o_data(cic_scaled_full)
     );
 
-    // Saturate to FIR input width
     saturate #(
         .IN_W(CIC_OW),
         .OUT_W(FIR_W)
@@ -55,7 +61,7 @@ module adc_decimation_chain #(
         .o_data(cic_scaled)
     );
 
-    // --- 3. Compensation FIR ---
+    // --- 3. Compensation FIR (passthrough in v2) ---
     wire signed [FIR_W-1:0] comp_data;
     wire                    comp_ready;
 
@@ -65,12 +71,12 @@ module adc_decimation_chain #(
         .clk(clk),
         .rst(rst),
         .i_valid(cic_ready),
-        .i_data(cic_scaled),     // <-- updated input
+        .i_data(cic_scaled),
         .o_valid(comp_ready),
         .o_data(comp_data)
     );
 
-    // --- 4. Half-Band Decimating FIR ---
+    // --- 4. Half-Band Decimating FIR (x2) ---
     halfband_fir #(
         .W(FIR_W)
     ) hb_fir_inst (
